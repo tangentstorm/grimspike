@@ -23,3 +23,7 @@ run/%: gen/%
 run/bfsyn: gen/bfsyn
 	@clear
 	@./gen/bfsyn < hello.bf
+
+run/bfrun: gen/bfrun
+	@clear
+	@./gen/bfrun < hello.bf
