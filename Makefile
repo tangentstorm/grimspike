@@ -1,3 +1,6 @@
+# set this to -t to test
+BFCODE = hello.bf
+
 default: run/bfsyn
 
 clean:
@@ -22,8 +25,8 @@ run/%: gen/%
 # special cases
 run/bfsyn: gen/bfsyn
 	@clear
-	@./gen/bfsyn < hello.bf
+	@./gen/bfsyn < $(BFCODE)
 
 run/bfrun: gen/bfrun
 	@clear
-	@./gen/bfrun hello.bf
+	@./gen/bfrun $(BFCODE)
