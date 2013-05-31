@@ -41,7 +41,7 @@ proc bak =
     else: dec(ip)
 
 
-proc runTime(code:string) =
+proc runCode(code:string) =
   ip = 0
   while ip < len(code):
     if code[ip] in kOpcodes:
@@ -89,42 +89,69 @@ proc runTime(code:string) =
 #   drawOutput()
 # echo "--"
 
-proc main(path:string) =
-  runTime readFile(path)
+proc resetVm =
+  output = ""
+  dp = 0
+  ip = 0
+  for i in countup(0,high(data)):
+    data[i] = 0
+
+
+proc runFile(path:string) =
+  resetVm()
+  runCode readFile(path)
   echo(output)
 
-proc runTests =
+proc runUnitTests =
   test "> increments dp":
     dp = 0
-    runTime(">")
+    runCode(">")
     check dp == 1
 
   test "< decrements dp":
     dp = 1
-    runTime("<")
+    runCode("<")
     check dp == 0
 
   test "+ increments data":
     data[dp] = 0
-    runTime("+")
+    runCode("+")
     check data[dp] == 1
 
   test "- decrements  data":
     data[dp] = 1
-    runTime("-")
+    runCode("-")
     check data[dp] == 0
 
   test ". outputs char":
     output = ""
     data[dp] = ord('a')
-    runTime(".")
+    runCode(".")
     check output == "a"
 
+
+proc runAcceptanceTests =
+  test "ascii A":
+    resetVm()
+    output = ""
+    runCode(
+      """
+      +++++ +++++ # 5 plus 5 = 10
+      +++++ +++++ # 20
+      +++++ +++++ # 30
+      +++++ +++++ # 40
+      +++++ +++++ # 50
+      +++++ +++++ # 60
+      +++++ .     # 65 so should emit ascii  'A'
+      """)
+    check output == "A"
 
 # command line interface:
 when isMainModule:
 
   if paramcount() == 1:
-    if paramstr(1) == "-t": runTests()
-    else: main(paramstr(1))
+    if paramstr(1) == "-t":
+      runUnitTests()
+      runAcceptanceTests()
+    else: runFile(paramstr(1))
   else: echo("usage: bfrun [-t|PATH]")
