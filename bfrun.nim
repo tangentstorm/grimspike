@@ -14,11 +14,11 @@ proc emit(x:char) =
   write(stdout,x)
 
 var
-    data   : TData
-    ip     : int = 0 # instruction pointer
-    dp     : int = 0 # data pointer
-    output : string = ""
-    code   : TCode 
+  data   : TData
+  ip     : int = 0 # instruction pointer
+  dp     : int = 0 # data pointer
+  output : string = ""
+  code   : TCode
 
 proc fwd =
   var bal : int = 0; var done : bool
@@ -42,6 +42,7 @@ proc bak =
 
 
 proc runTime(code:string) =
+  ip = 0
   while ip < len(code):
     if code[ip] in kOpcodes:
       case code[ip]
@@ -60,7 +61,6 @@ proc runTime(code:string) =
       #     discard readChar(stdin)
     else:nil
     inc(ip)
-  echo(output)
 
 # replace ascii control codes with the
 # equivalent caret representation
@@ -91,18 +91,36 @@ proc runTime(code:string) =
 
 proc main(path:string) =
   runTime readFile(path)
+  echo(output)
 
 proc runTests =
   test "> increments dp":
     dp = 0
     runTime(">")
     check dp == 1
-  
-  test "> decrements dp":
-    dp = 0; runtime(">")
-    runtime("<")
+
+  test "< decrements dp":
+    dp = 1
+    runTime("<")
     check dp == 0
-    
+
+  test "+ increments data":
+    data[dp] = 0
+    runTime("+")
+    check data[dp] == 1
+
+  test "- decrements  data":
+    data[dp] = 1
+    runTime("-")
+    check data[dp] == 0
+
+  test ". outputs char":
+    output = ""
+    data[dp] = ord('a')
+    runTime(".")
+    check output == "a"
+
+
 # command line interface:
 when isMainModule:
 
@@ -110,4 +128,3 @@ when isMainModule:
     if paramstr(1) == "-t": runTests()
     else: main(paramstr(1))
   else: echo("usage: bfrun [-t|PATH]")
-
