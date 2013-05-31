@@ -38,15 +38,19 @@ proc drawOutput() =
     else: emit(output[i])
   echo() # newline
 
-proc draw =
-  EraseScreen()
-  setCursorPos(0,0)
-  # TODO drawData()
+proc drawCode() =
   # show the code, but ignore comment chars
   for i in countup(0, len(code)):
     if i == ip: setStyle({styleReverse})
     emit(code[i])
     if i == ip: resetAttributes()
+
+proc draw =
+  EraseScreen()
+  setCursorPos(0,0)
+  # TODO drawData()
+  drawCode()
+  echo "-- output: -----"
   drawOutput()
 
 
@@ -77,6 +81,9 @@ proc runCode(src:string, debugFlag:bool=false) =
   ip = 0
   while ip < len(code):
     if code[ip] in kOpcodes:
+      if debugFlag:
+        draw()
+        discard readChar(stdin)
       case code[ip]
       of '>' : inc dp
       of '<' : dec dp
@@ -85,13 +92,10 @@ proc runCode(src:string, debugFlag:bool=false) =
       of '.' : output = output & chr(data[dp])
       of ',' : data[dp] = ord(readChar(stdin))
       of '[' :
-        if data[dp]!=0: fwd()
+        if data[dp]==0: fwd()
       of ']' :
-        if data[dp]==0: bak()
+        if data[dp]!=0: bak()
       else   : nil
-      if debugFlag:
-        draw()
-        discard readChar(stdin)
     else:nil
     inc(ip)
 
@@ -160,9 +164,9 @@ proc runAcceptanceTests =
 when isMainModule:
   var debugFlag = false
   if paramcount() == 0:
-    echo("usage: bfrun [-t|PATH]")
+    echo("usage: bfrun ( -t | -d | PATH )+")
   else:
-    for i in countup(0,paramcount()):
+    for i in countup(1, paramcount()):
       case paramstr(i)
       of "-t":
         runUnitTests()
