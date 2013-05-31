@@ -20,6 +20,38 @@ var
   output : string = ""
   code   : TCode
 
+
+# -- debug routines ----------------------------
+
+# replace ascii control codes with the
+# equivalent caret representation
+proc drawOutput() =
+  for i in countup(0, len(output)):
+    if ord(output[i]) == 0:
+      setForegroundColor(fgBlack, true)
+      emit('.')
+      resetAttributes()
+    elif ord(output[i]) < 32:
+      setForegroundColor(fgRed, true)
+      emit('^'); emit( chr(ord(output[i]) + ord('@')))
+      resetAttributes()
+    else: emit(output[i])
+  echo() # newline
+
+proc draw =
+  EraseScreen()
+  setCursorPos(0,0)
+  # TODO drawData()
+  # show the code, but ignore comment chars
+  for i in countup(0, len(code)):
+    if i == ip: setStyle({styleReverse})
+    emit(code[i])
+    if i == ip: resetAttributes()
+  drawOutput()
+
+
+# -- interpreter ------------------------------------
+
 proc fwd =
   var bal : int = 0; var done : bool
   while ip < len(code) and not done:
@@ -32,7 +64,7 @@ proc fwd =
 
 proc bak =
   var bal : int = 0; var done : bool
-  while not done:
+  while ip >= 0 and not done:
     if code[ip] == ']': inc(bal)
     elif code[ip] == '[':
       dec(bal)
@@ -40,8 +72,8 @@ proc bak =
     if ip == 0: raise newException(E_base, "No matching [ found.")
     else: dec(ip)
 
-
-proc runCode(code:string) =
+proc runCode(src:string, debugFlag:bool=false) =
+  code = src
   ip = 0
   while ip < len(code):
     if code[ip] in kOpcodes:
@@ -57,37 +89,11 @@ proc runCode(code:string) =
       of ']' :
         if data[dp]==0: bak()
       else   : nil
-      #     draw()
-      #     discard readChar(stdin)
+      if debugFlag:
+        draw()
+        discard readChar(stdin)
     else:nil
     inc(ip)
-
-# replace ascii control codes with the
-# equivalent caret representation
-# proc drawOutput() =
-#   for i in countup(0, len(output)):
-#     if ord(output[i]) == 0:
-#       setForegroundColor(fgBlack, true)
-#       emit('.')
-#       resetAttributes()
-#     elif ord(output[i]) < 32:
-#       setForegroundColor(fgRed, true)
-#       emit('^'); emit( chr(ord(output[i]) + ord('@')))
-#       resetAttributes()
-#     else: emit(output[i])
-#   echo()
-
-# proc draw =
-#   EraseScreen()
-#   setCursorPos(0,0)
-#   # TODO drawData()
-#   # show the code, but ignore comment chars
-#   for i in countup(0, len(code)):
-#     if i == ip: setStyle({styleReverse})
-#     emit(code[i])
-#     if i == ip: resetAttributes()
-#   drawOutput()
-# echo "--"
 
 proc resetVm =
   output = ""
@@ -97,10 +103,13 @@ proc resetVm =
     data[i] = 0
 
 
-proc runFile(path:string) =
+proc runFile(path:string, debugFlag:bool) =
   resetVm()
-  runCode readFile(path)
-  echo(output)
+  runCode readFile(path), debugFlag
+  drawOutput()
+
+
+# -- tests -----------------------------------------------
 
 proc runUnitTests =
   test "> increments dp":
@@ -146,12 +155,17 @@ proc runAcceptanceTests =
       """)
     check output == "A"
 
-# command line interface:
-when isMainModule:
+# -- command line interface: ----------------------------
 
-  if paramcount() == 1:
-    if paramstr(1) == "-t":
-      runUnitTests()
-      runAcceptanceTests()
-    else: runFile(paramstr(1))
-  else: echo("usage: bfrun [-t|PATH]")
+when isMainModule:
+  var debugFlag = false
+  if paramcount() == 0:
+    echo("usage: bfrun [-t|PATH]")
+  else:
+    for i in countup(0,paramcount()):
+      case paramstr(i)
+      of "-t":
+        runUnitTests()
+        runAcceptanceTests()
+      of "-d": debugFlag = true
+      else: runFile(paramstr(i), debugFlag)
