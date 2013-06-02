@@ -1,9 +1,15 @@
-# brainfuck interpreter in nimrod
-# http://en.wikipedia.org/wiki/Brainfuck
+#
+# brainf*** interpreter and debugger in nimrod
+#
+# https://github.com/tangentstorm/grimspike
+#
+# copyright (c) 2013 Michal J Wallace and Taylor Skidmore
+# available for use under the MIT/X11 license
+#
 import os, unsigned, terminal, unittest
 
 const
-  kRamSize = 64
+  kRamSize = 30000
   kOpcodes = {'<','>','+','-','.',',','[',']'}
 
 type
@@ -20,38 +26,72 @@ var
   output : string = ""
   code   : TCode
 
-
 # -- debug routines ----------------------------
+
+proc colored(fg:TForegroundColor, s:string) =
+  setForegroundColor(fg, true)
+  stdout.write(s)
+  resetAttributes()
 
 # replace ascii control codes with the
 # equivalent caret representation
-proc drawOutput() =
+proc drawCarets(output:string) =
   for i in countup(0, len(output)):
     if ord(output[i]) == 0:
-      setForegroundColor(fgBlack, true)
-      emit('.')
-      resetAttributes()
+      colored(fgBlack, ".")
     elif ord(output[i]) < 32:
-      setForegroundColor(fgRed, true)
-      emit('^'); emit( chr(ord(output[i]) + ord('@')))
-      resetAttributes()
+      colored(fgRed, "" &  chr(ord(output[i]) + ord('@')))
+    elif ord(output[i]) > 0x7F:
+      colored(fgBlue, "?")
     else: emit(output[i])
   echo() # newline
+
+proc hex(b:byte):string =
+  let hexits = "0123456789ABCDEF"
+  result = hexits[int(b div 16)] & hexits[b mod 16]
+
+proc hexDump(data:TData; w:byte=16; h:byte=8) =
+  for y in countup(0, h):
+    for x in countup(0, w): stdout.write hex(data[y * w + x]), ' '
+    var short = ""
+    for x in countup(0, w): short = short & chr(data[y * w + x])
+    drawCarets(short)
 
 proc drawCode() =
   # show the code, but ignore comment chars
   for i in countup(0, len(code)):
+    case code[i]
+    of '<' : setForegroundColor(fgGreen, true)
+    of '>' : setForegroundColor(fgGreen, true)
+    of '+' : setForegroundColor(fgYellow)
+    of '-' : setForegroundColor(fgYellow)
+    of '.' : setForegroundColor(fgCyan)
+    of ',' : setForegroundColor(fgCyan)
+    of '[' : setForegroundColor(fgBlue, true)
+    of ']' : setForegroundColor(fgBlue, true)
+    else   : setForegroundColor(fgWhite)
     if i == ip: setStyle({styleReverse})
     emit(code[i])
     if i == ip: resetAttributes()
 
+
+proc head(s:string)=
+  var res = "--| "  & s & " |--"
+  while len(res) < 70 : res = res & '-'
+  setStyle({styleReverse})
+  stdout.writeln res
+  ResetAttributes()
+
 proc draw =
-  EraseScreen()
   setCursorPos(0,0)
-  # TODO drawData()
+  head "data"
+  hexDump(data)
+  head "code"
   drawCode()
-  echo "-- output: -----"
-  drawOutput()
+  head "output"
+  EraseLine()
+  drawCarets(output)
+  echo ""
 
 
 # -- interpreter ------------------------------------
@@ -110,7 +150,7 @@ proc resetVm =
 proc runFile(path:string, debugFlag:bool) =
   resetVm()
   runCode readFile(path), debugFlag
-  drawOutput()
+  drawCarets(output)
 
 
 # -- tests -----------------------------------------------
